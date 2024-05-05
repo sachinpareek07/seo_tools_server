@@ -1,9 +1,12 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const bodyParser = require("body-parser");
 const { JSDOM } = require("jsdom");
 
+
 const app = express();
+app.use(express.json({ limit: "10mb" }));
 
 const port = 3001;
 
@@ -12,6 +15,7 @@ app.listen(port, () => {
 });
 
 app.use(cors());
+app.use(bodyParser.json());
 
 app.get("/ssl-analyze", async (req, res) => {
   try {
@@ -117,16 +121,15 @@ app.get("/check-redirection", async (req, res) => {
   }
 });
 
-
 async function fetchData(url) {
   try {
     const response = await axios.get(url);
     if (!response.data) {
-      throw new Error('Failed to fetch URL');
+      throw new Error("Failed to fetch URL");
     }
     return response.data;
   } catch (error) {
-    throw new Error('Failed to fetch URL');
+    throw new Error("Failed to fetch URL");
   }
 }
 
@@ -148,6 +151,21 @@ app.get("/check-canonical", async (req, res) => {
     const html = await fetchData(url);
     const canonicalTag = await parseHTML(html);
     res.json({ canonicalTag });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/alttext", async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: "Image is required" });
+    }
+    const response = await axios.post("https://alttext.in/api/alttext", {
+      image,
+    });
+    res.json(response.data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
