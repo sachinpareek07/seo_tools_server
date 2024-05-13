@@ -4,7 +4,6 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { JSDOM } = require("jsdom");
 
-
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 
@@ -101,19 +100,21 @@ app.get("/check-redirection", async (req, res) => {
   const { url } = req.query;
 
   try {
-    const response = await axios.get(url, { maxRedirects: 0 });
+    const response = await fetch(url, { redirect: "manual" });
 
-    if (response.status === 200) {
+    if (response.ok) {
       res.json({
-        redirectUrl: "No redirection found",
-        redirectType: response.status,
+        url: url,
+        redirectType: 200,
+        redirectUrl: "No Redirection Found",
       });
     } else {
-      const finalUrl = response.request.res.responseUrl;
+      const finalUrl = response.headers.get("location");
       const status = response.status;
       res.json({
-        redirectUrl: finalUrl,
+        url: url,
         redirectType: `Redirected with status ${status}`,
+        redirectUrl: getFullUrl(url, finalUrl),
       });
     }
   } catch (error) {
@@ -144,6 +145,15 @@ async function parseHTML(html) {
     return "No canonical tag found";
   }
 }
+
+const getFullUrl = (input, output) => {
+  if (output.startsWith("http")) {
+    return output;
+  } else {
+    const domain = new URL(input).origin;
+    return `${domain}${output}`;
+  }
+};
 
 app.get("/check-canonical", async (req, res) => {
   try {
